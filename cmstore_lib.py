@@ -1,9 +1,21 @@
+import asks
 import re
 import yaml
 import aiofiles
+import fake_useragent
 
 from contextlib import suppress
 from urllib.parse import unquote_plus
+
+
+class RequestError(Exception):
+
+    def __init__(self, error_message):
+        self.message = error_message
+        super().__init__(self.message)
+
+    def __str__(self):
+        return self.message
 
 
 async def decode_message(message, template):
@@ -50,3 +62,29 @@ async def read_config(param=''):
         if not param:
             return settings
         return settings.get(param, None)
+
+
+async def request_data(url, header, params):
+    with suppress(asks.errors.BadStatus):
+        responce = await asks.get(url, headers=header, params=params)
+        responce.raise_for_status()
+        reply = responce.json()
+        if not reply.get('error'):
+            return reply
+
+    raise RequestError(responce.text)
+
+
+async def is_valid_insta_account(insta_name):
+    with suppress(KeyError, ValueError, TypeError, RequestError, AssertionError):
+        _, nickname = re.split(r'^@', insta_name)
+        if not nickname:
+            return None
+        user = fake_useragent.UserAgent().random
+        response = await request_data(
+            f'https://www.instagram.com/{nickname}',
+            {'user-agent': user},
+            {'__a': 1}
+        )
+        assert nickname == response['graphql']['user']['username']
+        return True

@@ -11,7 +11,9 @@ from aiogram.utils.exceptions import BadRequest, MessageTextIsEmpty
 from contextlib import suppress
 from environs import Env
 
-from cmstore_lib import read_file, read_config
+from cmstore_lib import (
+    read_file, read_config, is_valid_insta_account
+)
 from notify_rollbar import notify_rollbar
 from error_handler import errors_handler
 
@@ -117,12 +119,19 @@ async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
 
 
 async def cmd_instagram_handle(message: types.Message, state: FSMContext):
-
+    if not re.match(r'''^@[a-zA-Z0-9-_.]{5,16}''', message.text):
+        await message.answer('Вы не корректно ввели аккаунт инстаграмма, введите в формате "@...."')
+        return
+    valid_insta_account = await is_valid_insta_account(message.text)
+    if not valid_insta_account:
+        await message.answer('Вы ввели недействительный аккаунт инстаграмма."')
+        return
     await state.update_data(instagram=message.text.lower())
     user_data = await state.get_data()
     logger.info(user_data)
+    final_text = 'Спасибо за регистрацию. Вы участвуете в розыгрыше приза!'
     await message.answer(
-        'Спасибо за регистрацию. Вы участвуете в розыгрыше приза!',
+        final_text,
         parse_mode=types.ParseMode.MARKDOWN,
         reply_markup=types.ReplyKeyboardRemove()
     )
