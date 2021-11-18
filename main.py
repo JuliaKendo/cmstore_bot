@@ -7,7 +7,7 @@ from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.utils.executor import start_polling
-from aiogram.utils.exceptions import BadRequest, MessageTextIsEmpty
+from aiogram.utils.exceptions import BadRequest
 from contextlib import suppress
 from environs import Env
 
@@ -41,7 +41,7 @@ async def set_commands(bot: Bot):
 
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.reset_state()
-    with suppress(BadRequest): # перехват ошибки здесь позволяет вывести текст без картинки.
+    with suppress(BadRequest):  # перехват ошибки здесь позволяет вывести текст без картинки.
         path_image = await read_config('startup_image')
         startup_photo = await read_file(path_image)
         await message.answer_photo(photo=startup_photo, reply_markup=types.ReplyKeyboardRemove())
