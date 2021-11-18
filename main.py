@@ -1,5 +1,4 @@
 import re
-import asyncio
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.dispatcher import FSMContext

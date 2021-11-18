@@ -1,5 +1,4 @@
 import asyncio
-import aiofiles
 import config
 
 from environs import Env
