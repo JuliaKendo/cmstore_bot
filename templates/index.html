@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+
+    <title>config CM store telegram bot!</title>
+  </head>
+  <body>
+    <div class="container">
+      <div id="configArea">
+        <div class="card mb-5">
+          <img src="{{ url_for('static', filename='CMStore_bot.png') }}" class="card-img-top img-responsive">
+          <div class="card-body">
+            <form method="post" action="/updateConfig/" class="form-inline" @submit="onSubmit" id="form-send-configs">
+              <div class="mb-3">
+                <label for="botInstruction" class="form-label">Инструкция по работе с ботом:</label>
+                <textarea class="form-control" name="text" id="botInstruction" rows="3"></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="botImage" class="form-label">Стартовая картинка бота:</label>
+                <input class="form-control" name="file" type="file" id="botImage">
+              </div>
+              <div class="sm-5 align-items-right">
+                <button type="submit" class="btn btn-primary mb-2 ">Подтвердить</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Optional JavaScript; choose one of the two! -->
+
+    <!-- Option 1: Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <!-- Option 2: Separate Popper and Bootstrap JS -->
+    <!--
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+    -->
+    <script type="text/javascript">
+
+      function actionText(action, value){
+
+        const bodyParams = new URLSearchParams();
+        bodyParams.append('text', value);
+
+        fetch(action, {
+          method: 'POST',
+          body: bodyParams,
+        }).then(function(response){
+          console.log(response)
+        })
+        .catch(function(error){
+          console.error(error);
+        });
+      }
+
+      function actionFile(action, value){
+
+        const bodyParams = new URLSearchParams();
+        bodyParams.append('file', value);
+        console.log(value)
+
+        fetch(action, {
+          method: 'POST',
+          body: value,
+        }).then(function(response){
+          console.log(response)
+        })
+        .catch(function(error){
+          console.error(error);
+        });
+      }
+
+    </script>
+    <script>
+      console.log()
+      var app = new Vue({
+        el: '#configArea',
+        data: {},
+        methods:{
+           'onSubmit': function(event){
+            event.preventDefault();
+            let form = document.getElementById('form-send-configs');
+            form.firstElementChild.disabled = true;
+            let formData = new FormData(form);
+            let startupImage = formData.getAll('file')[0]
+            actionFile(form.action+"startupImage", startupImage);
+            actionText(form.action+"introduction", formData.getAll('text'));
+            form.reset();
+            form.firstElementChild.disabled = false;
+          }
+        },
+      })
+    </script>
+  </body>
+</html>
