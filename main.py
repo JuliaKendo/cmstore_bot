@@ -32,14 +32,9 @@ async def set_commands(bot: Bot):
     await bot.set_my_commands(commands)
 
 
-async def text_empty_handler(update: types.Update, exception: MessageTextIsEmpty):
-    print(f"Отсутствует текст!\nСообщение: {update}\nОшибка: {exception}")
-    return True
-
-
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.reset_state()
-    with suppress(BadRequest):
+    with suppress(BadRequest): # перехват ошибки здесь позволяет вывести текст без картинки.
         path_image = await read_config('startup_image')
         startup_photo = await read_file(path_image)
         await message.answer_photo(photo=startup_photo, reply_markup=types.ReplyKeyboardRemove())
@@ -130,8 +125,6 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
 
 
 def register_handlers_common(dp: Dispatcher):
-    # Обработчики ошибок
-    dp.register_errors_handler(text_empty_handler, exception=MessageTextIsEmpty)
     # Регистрация общих обработчиков
     dp.register_message_handler(cmd_start, commands=['start'], state='*')
     dp.register_message_handler(cmd_cancel, commands=['cancel', 'exit', 'stop', 'quit'], state='*')
@@ -172,7 +165,11 @@ def main():
     bot = Bot(token=bot_token)
     dp = Dispatcher(bot, storage=storage)
 
+    # Обработчики логики бота
     register_handlers_common(dp)
+
+    # Обработчики ошибок
+    dp.register_errors_handler(errors_handler)
 
     start_polling(dp, on_startup=on_startup, on_shutdown=on_shutdown)
 
