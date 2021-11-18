@@ -14,6 +14,7 @@ from environs import Env
 from cmstore_lib import (
     read_file, read_config, is_valid_insta_account
 )
+from sms_api import send_sms
 from notify_rollbar import notify_rollbar
 from error_handler import errors_handler
 
@@ -136,6 +137,12 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
         reply_markup=types.ReplyKeyboardRemove()
     )
     await state.finish()
+    # Вынести в декоратор, ибо может понадобиться информирование на других шагах
+    dispatch_report = await send_sms(
+        env.str('SMS_API_ID', ''), [user_data['phone_number']], final_text
+    )
+    # Добавить проверку статуса доставки и отправлять информацию в роллбар и логи
+    logger.info(dispatch_report)
 
 
 def register_handlers_common(dp: Dispatcher):
