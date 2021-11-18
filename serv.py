@@ -6,6 +6,7 @@ from contextlib import suppress
 from quart import Quart, request, render_template, jsonify
 
 from cmstore_lib import update_config, save_file, decode_message
+from notify_rollbar import anotify_rollbar
 
 env = Env()
 env.read_env()
@@ -20,6 +21,7 @@ async def index():
 
 
 @app.route('/updateConfig/<name>', methods=['POST'])
+@anotify_rollbar()
 async def update_config_params(name):
     message = await request.get_data()
     if name == 'introduction':

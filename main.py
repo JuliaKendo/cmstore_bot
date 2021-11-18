@@ -1,4 +1,5 @@
 import re
+import logging
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.dispatcher import FSMContext
@@ -11,10 +12,14 @@ from contextlib import suppress
 from environs import Env
 
 from cmstore_lib import read_file, read_config
+from notify_rollbar import notify_rollbar
+from error_handler import errors_handler
 
 
 env = Env()
 env.read_env()
+
+logger = logging.getLogger('cmstore-bot')
 
 
 class OrderDraw(StatesGroup):
@@ -115,7 +120,7 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
 
     await state.update_data(instagram=message.text.lower())
     user_data = await state.get_data()
-    print(user_data)
+    logger.info(user_data)
     await message.answer(
         'Спасибо за регистрацию. Вы участвуете в розыгрыше приза!',
         parse_mode=types.ParseMode.MARKDOWN,
@@ -141,6 +146,7 @@ def register_handlers_common(dp: Dispatcher):
 
 
 async def on_shutdown(dispatcher: Dispatcher):
+    logger.info('Shutdown.')
     bot = dispatcher.bot
     # Close Redis connection.
     await dispatcher.storage.close()
@@ -148,12 +154,20 @@ async def on_shutdown(dispatcher: Dispatcher):
 
 
 async def on_startup(dispatcher: Dispatcher):
+    logger.info('Startup.')
     bot = dispatcher.bot
     # Установка команд бота
     await set_commands(bot)
 
 
+@notify_rollbar()
 def main():
+
+    logging.basicConfig(
+        level='INFO',
+        format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+    )
+    logger.info('Starting bot')
 
     storage = RedisStorage2(
         host=env.str('REDIS_HOST', 'localhost'),
