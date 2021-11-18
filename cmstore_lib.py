@@ -13,15 +13,16 @@ async def decode_message(message, template):
 
 
 async def read_file(path_to_file):
-    # with suppress(FileNotFoundError, TypeError):
-    async with aiofiles.open(path_to_file, mode='rb') as f:
-        content = await f.read()
-    return content
+    with suppress(FileNotFoundError, TypeError):
+        async with aiofiles.open(path_to_file, mode='rb') as f:
+            content = await f.read()
+        return content
 
 
 async def save_file(path_to_file, content):
-    async with aiofiles.open(path_to_file, mode='wb') as f:
-        f.write(content)
+    with suppress(FileNotFoundError, TypeError):
+        async with aiofiles.open(path_to_file, mode='wb') as f:
+            f.write(content)
 
 
 async def update_config(**params):
