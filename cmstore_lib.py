@@ -2,7 +2,7 @@ import asks
 import re
 import yaml
 import aiofiles
-import fake_useragent
+import requests
 
 from contextlib import suppress
 from urllib.parse import unquote_plus
@@ -76,15 +76,10 @@ async def request_data(url, header, params):
 
 
 async def is_valid_insta_account(insta_name):
-    with suppress(KeyError, ValueError, TypeError, RequestError, AssertionError):
+    with suppress(ValueError, requests.exceptions.ReadTimeout, AssertionError):
         _, nickname = re.split(r'^@', insta_name)
-        if not nickname:
-            return None
-        user = fake_useragent.UserAgent().random
-        response = await request_data(
-            f'https://www.instagram.com/{nickname}',
-            {'user-agent': user},
-            {'__a': 1}
+        response = requests.get(
+            f'https://www.instagram.com/{nickname}/', verify=False, timeout=10
         )
-        assert nickname == response['graphql']['user']['username']
+        assert re.findall(r'''(%s)''' % insta_name, response.text)
         return True
