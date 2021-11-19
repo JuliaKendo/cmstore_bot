@@ -14,7 +14,7 @@ from environs import Env
 from cmstore_lib import (
     read_file, read_config, is_valid_insta_account
 )
-from sms_api import send_sms
+from sms_api import sms_handle
 from notify_rollbar import notify_rollbar
 from error_handler import errors_handler
 
@@ -119,6 +119,7 @@ async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
     await ConversationSteps.next()
 
 
+@sms_handle(env.str('SMS_API_ID', ''))
 async def cmd_instagram_handle(message: types.Message, state: FSMContext):
     if not re.match(r'''^@[a-zA-Z0-9-_.]{5,16}''', message.text):
         await message.answer('Вы не корректно ввели аккаунт инстаграмма, введите в формате "@...."')
@@ -141,12 +142,7 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
         reply_markup=types.ReplyKeyboardRemove()
     )
     await state.finish()
-    # Вынести в декоратор, ибо может понадобиться информирование на других шагах
-    dispatch_report = await send_sms(
-        env.str('SMS_API_ID', ''), [user_data['phone_number']], final_text
-    )
-    # Добавить проверку статуса доставки и отправлять информацию в роллбар и логи
-    logger.info(dispatch_report)
+    return user_data, final_text
 
 
 def register_handlers_common(dp: Dispatcher):
