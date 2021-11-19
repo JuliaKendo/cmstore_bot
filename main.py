@@ -25,7 +25,7 @@ env.read_env()
 logger = logging.getLogger('cmstore-bot')
 
 
-class OrderDraw(StatesGroup):
+class ConversationSteps(StatesGroup):
     waiting_for_check_number = State()
     waiting_for_user_name = State()
     waiting_for_phone_number = State()
@@ -66,7 +66,7 @@ async def cmd_cancel(message: types.Message, state: FSMContext):
 
 
 async def cmd_check_number_input(message: types.Message):
-    await OrderDraw.waiting_for_check_number.set()
+    await ConversationSteps.waiting_for_check_number.set()
 
 
 async def cmd_check_numbers_handle(message: types.Message, state: FSMContext):
@@ -84,7 +84,7 @@ async def cmd_check_numbers_handle(message: types.Message, state: FSMContext):
         parse_mode=types.ParseMode.MARKDOWN,
         reply_markup=keyboard
     )
-    await OrderDraw.next()
+    await ConversationSteps.next()
 
 
 async def cmd_user_name_handle(message: types.Message, state: FSMContext):
@@ -100,7 +100,7 @@ async def cmd_user_name_handle(message: types.Message, state: FSMContext):
         parse_mode=types.ParseMode.MARKDOWN,
         reply_markup=keyboard
     )
-    await OrderDraw.next()
+    await ConversationSteps.next()
 
 
 async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
@@ -116,7 +116,7 @@ async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
         parse_mode=types.ParseMode.MARKDOWN,
         reply_markup=keyboard
     )
-    await OrderDraw.next()
+    await ConversationSteps.next()
 
 
 async def cmd_instagram_handle(message: types.Message, state: FSMContext):
@@ -130,7 +130,11 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
     await state.update_data(instagram=message.text.lower())
     user_data = await state.get_data()
     logger.info(user_data)
-    final_text = 'Спасибо за регистрацию. Вы участвуете в розыгрыше приза!'
+    final_text = '''
+Отлично, теперь Вы в игре😉
+Ваш номер участника ХХХХ
+Ждём 29 декабря в 15:00 на странице https://www.instagram.com/clinicmobile23/
+'''
     await message.answer(
         final_text,
         parse_mode=types.ParseMode.MARKDOWN,
@@ -152,13 +156,19 @@ def register_handlers_common(dp: Dispatcher):
     dp.register_message_handler(cmd_cancel, Text(equals="завершить", ignore_case=True), state="*")
     # Шаг 1. Ввод и проверка номера чека
     dp.register_message_handler(cmd_check_number_input, text='Введите номер чека', state='*')
-    dp.register_message_handler(cmd_check_numbers_handle, state=OrderDraw.waiting_for_check_number)
+    dp.register_message_handler(
+        cmd_check_numbers_handle, state=ConversationSteps.waiting_for_check_number
+    )
     # Шаг 2. Обработка ввода ФИО пользователя
-    dp.register_message_handler(cmd_user_name_handle, state=OrderDraw.waiting_for_user_name)
+    dp.register_message_handler(
+        cmd_user_name_handle, state=ConversationSteps.waiting_for_user_name
+    )
     # Шаг 3. Обработка ввода номера телефона пользователя
-    dp.register_message_handler(cmd_phone_number_handle, state=OrderDraw.waiting_for_phone_number)
+    dp.register_message_handler(
+        cmd_phone_number_handle, state=ConversationSteps.waiting_for_phone_number
+    )
     # Шаг 4. Обработка ввода аккаунта инстаграм
-    dp.register_message_handler(cmd_instagram_handle, state=OrderDraw.waiting_for_insta)
+    dp.register_message_handler(cmd_instagram_handle, state=ConversationSteps.waiting_for_insta)
 
 
 async def on_shutdown(dispatcher: Dispatcher):
