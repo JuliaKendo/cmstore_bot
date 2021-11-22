@@ -9,7 +9,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
-from aiogram.utils.executor import start_polling
+from aiogram.utils.executor import start_polling, start_webhook
 from aiogram.utils.exceptions import BadRequest
 from contextlib import suppress
 from environs import Env
@@ -226,6 +226,8 @@ def register_handlers_common(dp: Dispatcher):
 async def on_shutdown(dispatcher: Dispatcher):
     logger.info('Shutdown.')
     bot = dispatcher.bot
+    if bot.data['use_webhook']:
+        await bot.delete_webhook()
     # Close Redis connection.
     await dispatcher.storage.close()
     await dispatcher.storage.wait_closed()
@@ -234,6 +236,8 @@ async def on_shutdown(dispatcher: Dispatcher):
 async def on_startup(dispatcher: Dispatcher):
     logger.info('Startup.')
     bot = dispatcher.bot
+    if bot.data['use_webhook']:
+        await bot.set_webhook(bot.data['webhook_url'])
     # Установка команд бота
     await set_commands(bot)
 
@@ -245,6 +249,7 @@ def main():
         level='INFO',
         format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
     )
+
     logger.info('Starting bot')
 
     storage = RedisStorage2(
@@ -253,8 +258,9 @@ def main():
         db='5'
     )
 
-    bot_token = env.str('TG_BOT_TOKEN')
-    bot = Bot(token=bot_token)
+    bot = Bot(token=env.str('TG_BOT_TOKEN'))
+
+    config.set_bot_variables(bot, env)
     dp = Dispatcher(bot, storage=storage)
 
     # Обработчики логики бота
@@ -263,7 +269,18 @@ def main():
     # Обработчики ошибок
     dp.register_errors_handler(errors_handler)
 
-    start_polling(dp, on_startup=on_startup, on_shutdown=on_shutdown)
+    if bot.data['use_webhook']:
+        start_webhook(
+            dispatcher=dp,
+            webhook_path='/webhook',
+            on_startup=on_startup,
+            on_shutdown=on_shutdown,
+            skip_updates=True,
+            host=bot.data['webapp_host'],
+            port=bot.data['webapp_port'],
+        )
+    else:
+        start_polling(dp, on_startup=on_startup, on_shutdown=on_shutdown)
 
 
 if __name__ == "__main__":
