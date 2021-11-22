@@ -1,22 +1,8 @@
 import asks
-import logging
 import functools
-import rollbar
 
 from contextlib import suppress
-
-logger = logging.getLogger('cmstore-bot')
-
-
-class SmsApiError(Exception):
-
-    def __init__(self, error_message):
-        self.message = error_message
-        super().__init__(self.message)
-
-    def __str__(self):
-        logger.error(self.message)
-        return self.message
+from custom_exceptions import SmsApiError
 
 
 async def request_sms(method, api_id='', payload={}, login='', password=''):
@@ -90,26 +76,23 @@ async def check_sms_delivery(api_id, dispatch_reports):
     return sms_delivery_reports
 
 
-def sms_handle(api_id):
+def handle_sms():
     def decorator(func):
         @functools.wraps(func)
         async def inner(*args, **kwargs):
-            with suppress(TypeError):
+            with suppress(TypeError, ValueError, KeyError):
                 user_data, final_text = await func(*args, **kwargs)
-                try:
-                    dispatch_reports = await send_sms(
-                        api_id, [user_data['phone_number']], final_text
+                api_id = args[0].bot.data['sms_api_id']
+                dispatch_reports = await send_sms(
+                    api_id, [user_data['phone_number']], final_text
+                )
+                sms_delivery_reports = await check_sms_delivery(api_id, dispatch_reports)
+                unsuccessful_sms_delivery = [
+                    sms_delivery_report for sms_delivery_report in sms_delivery_reports if (
+                        sms_delivery_report['status_code'] >= 104 or sms_delivery_report['status_code'] == -1
                     )
-                    sms_delivery_reports = await check_sms_delivery(api_id, dispatch_reports)
-                    unsuccessful_sms_delivery = [
-                        sms_delivery_report for sms_delivery_report in sms_delivery_reports if (
-                            sms_delivery_report['status_code'] >= 104 or sms_delivery_report['status_code'] == -1
-                        )
-                    ]
-                    if unsuccessful_sms_delivery:
-                        raise SmsApiError(unsuccessful_sms_delivery)
-                except (ValueError, KeyError, SmsApiError) as error:
-                    logger.error(f'Ошибки отправки sms: {error}')
-                    rollbar.report_exc_info()
+                ]
+                if unsuccessful_sms_delivery:
+                    raise SmsApiError(unsuccessful_sms_delivery)
         return inner
     return decorator

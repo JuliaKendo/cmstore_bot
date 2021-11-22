@@ -1,5 +1,8 @@
 import re
 import logging
+import config
+import functools
+import rollbar
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.dispatcher import FSMContext
@@ -10,11 +13,29 @@ from aiogram.utils.executor import start_polling
 from aiogram.utils.exceptions import BadRequest
 from contextlib import suppress
 from environs import Env
+from requests import HTTPError, ConnectionError
 
 from cmstore_lib import (
-    read_file, read_config, is_valid_insta_account
+    read_file,
+    read_config,
+    is_valid_insta_account,
+    get_document_identifiers_from_service,
+    update_users_full_name,
+    update_users_phone,
+    update_users_instagram
 )
-from sms_api import sms_handle
+from custom_exceptions import (
+    DocumentNotFound,
+    NoActiveDrawFound,
+    DocumentDoesNotMatch,
+    UncorrectDocumentNumber,
+    UncorrectUserFullName,
+    UncorrectUserPhone,
+    UncorrectUserInstagram,
+    InvalidInstagramAccount,
+    SmsApiError
+)
+from sms_api import handle_sms
 from notify_rollbar import notify_rollbar
 from error_handler import errors_handler
 
@@ -30,6 +51,33 @@ class ConversationSteps(StatesGroup):
     waiting_for_user_name = State()
     waiting_for_phone_number = State()
     waiting_for_insta = State()
+
+
+def handle_mistakes():
+    def decorator(func):
+        @functools.wraps(func)
+        async def inner(*args, **kwargs):
+            try:
+                await func(*args, **kwargs)
+            except (
+                DocumentNotFound,
+                NoActiveDrawFound,
+                DocumentDoesNotMatch,
+                UncorrectDocumentNumber,
+                UncorrectUserFullName,
+                UncorrectUserPhone,
+                UncorrectUserInstagram,
+                InvalidInstagramAccount
+            ) as description:
+                await args[0].answer(description)
+            except SmsApiError as error:
+                logger.error(f'Ошибки отправки sms: {error}')
+                rollbar.report_exc_info()
+            except (HTTPError, ConnectionError) as error:
+                logger.error(f'Ошибка отправки http запроса в 1С: {error}')
+                rollbar.report_exc_info()
+        return inner
+    return decorator
 
 
 async def set_commands(bot: Bot):
@@ -69,12 +117,13 @@ async def cmd_check_number_input(message: types.Message):
     await ConversationSteps.waiting_for_check_number.set()
 
 
+@handle_mistakes()
 async def cmd_check_numbers_handle(message: types.Message, state: FSMContext):
 
     if not re.match(r'''^(\d{5})$''', message.text):
-        await message.answer('Вы ввели не корректный номер, введите 5 числовых символов')
-        return
-    await state.update_data(check_number=message.text)
+        raise UncorrectDocumentNumber
+    document_ids = await get_document_identifiers_from_service(message.text)
+    await state.update_data(document=document_ids)
 
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     buttons = ['Завершить']
@@ -87,11 +136,15 @@ async def cmd_check_numbers_handle(message: types.Message, state: FSMContext):
     await ConversationSteps.next()
 
 
+@handle_mistakes()
 async def cmd_user_name_handle(message: types.Message, state: FSMContext):
+
     if not re.match(r'''([А-ЯЁ][а-яё]+[\-\s]?){3,}''', message.text):
-        await message.answer('Вы не верно ввели ФИО, введите в формате "Иванов Иван Иванович"')
-        return
-    await state.update_data(user_name=message.text.lower())
+        raise UncorrectUserFullName
+    user_full_name = message.text.lower()
+    user_data = await state.get_data()
+    await update_users_full_name(user_data['document'], user_full_name)
+    await state.update_data(user_name=user_full_name)
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     buttons = ['Завершить']
     keyboard.add(*buttons)
@@ -103,11 +156,14 @@ async def cmd_user_name_handle(message: types.Message, state: FSMContext):
     await ConversationSteps.next()
 
 
+@handle_mistakes()
 async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
+
     if not re.match(r'''^(79\d{9})$''', message.text):
-        await message.answer('Вы не верно ввели номер телефона, введите в формате "79180000025"')
-        return
-    await state.update_data(phone_number=message.text.lower())
+        raise UncorrectUserPhone
+    user_data = await state.get_data()
+    await update_users_phone(user_data['document'], message.text)
+    await state.update_data(phone_number=message.text)
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     buttons = ['Завершить']
     keyboard.add(*buttons)
@@ -119,18 +175,18 @@ async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
     await ConversationSteps.next()
 
 
-@sms_handle(env.str('SMS_API_ID', ''))
+@handle_mistakes()
+@handle_sms()
 async def cmd_instagram_handle(message: types.Message, state: FSMContext):
+
     if not re.match(r'''^@[a-zA-Z0-9-_.]{5,16}''', message.text):
-        await message.answer('Вы не корректно ввели аккаунт инстаграмма, введите в формате "@...."')
-        return
+        raise UncorrectUserInstagram
     valid_insta_account = await is_valid_insta_account(message.text)
     if not valid_insta_account:
-        await message.answer('Вы ввели недействительный аккаунт инстаграмма."')
-        return
-    await state.update_data(instagram=message.text.lower())
+        raise InvalidInstagramAccount
     user_data = await state.get_data()
-    logger.info(user_data)
+    await update_users_instagram(user_data['document'], message.text)
+    await state.update_data(instagram=message.text)
     final_text = '''
 Отлично, теперь Вы в игре😉
 Ваш номер участника ХХХХ

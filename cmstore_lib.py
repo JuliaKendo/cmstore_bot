@@ -7,15 +7,14 @@ import requests
 from contextlib import suppress
 from urllib.parse import unquote_plus
 
+from custom_exceptions import (
+    RequestError,
+    DocumentNotFound,
+    NoActiveDrawFound,
+    DocumentDoesNotMatch
+)
 
-class RequestError(Exception):
-
-    def __init__(self, error_message):
-        self.message = error_message
-        super().__init__(self.message)
-
-    def __str__(self):
-        return self.message
+service_url = 'https://cloud.sova.company/dev/cm/hs/sova_rozygrysh'
 
 
 async def decode_message(message, template):
@@ -83,3 +82,40 @@ async def is_valid_insta_account(insta_name):
         )
         assert re.findall(r'''(%s)''' % insta_name, response.text)
         return True
+
+
+async def get_document_identifiers_from_service(document_number):
+    response = await asks.post(
+        service_url, json={"documentNumber": document_number}
+    )
+    response.raise_for_status()
+
+    document_ids = response.json()
+    if document_ids['document'] == 'not found':
+        raise DocumentNotFound
+    if document_ids['document'] == 'no active draw found':
+        raise NoActiveDrawFound
+    if document_ids['document'] == 'does not match':
+        raise DocumentDoesNotMatch
+    return document_ids
+
+
+async def update_users_full_name(document_ids, user_full_name):
+    response = await asks.post(
+        service_url, json={**document_ids, **{"customerName": user_full_name}}
+    )
+    response.raise_for_status()
+
+
+async def update_users_phone(document_ids, user_phone):
+    response = await asks.post(
+        service_url, json={**document_ids, **{"customerTelephone": user_phone}}
+    )
+    response.raise_for_status()
+
+
+async def update_users_instagram(document_ids, user_instagram):
+    response = await asks.post(
+        service_url, json={**document_ids, **{"customerInstagram": user_instagram}}
+    )
+    response.raise_for_status()
