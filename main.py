@@ -185,11 +185,11 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
     if not valid_insta_account:
         raise InvalidInstagramAccount
     user_data = await state.get_data()
-    await update_users_instagram(user_data['document'], message.text)
+    participant_number = await update_users_instagram(user_data['document'], message.text)
     await state.update_data(instagram=message.text)
-    final_text = '''
+    final_text = f'''
 Отлично, теперь Вы в игре😉
-Ваш номер участника ХХХХ
+Ваш номер участника {participant_number if participant_number else ""}
 Ждём 29 декабря в 15:00 на странице https://www.instagram.com/clinicmobile23/
 '''
     await message.answer(

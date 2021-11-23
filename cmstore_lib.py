@@ -119,3 +119,7 @@ async def update_users_instagram(document_ids, user_instagram):
         service_url, json={**document_ids, **{"customerInstagram": user_instagram}}
     )
     response.raise_for_status()
+
+    participant_number = response.json().get('number')
+    if participant_number:
+        return str(participant_number).zfill(4)
