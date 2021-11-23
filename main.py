@@ -167,7 +167,7 @@ async def cmd_user_name_handle(message: types.Message, state: FSMContext):
 @handle_mistakes()
 async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
 
-    if not re.match(r'''^(79\d{9})$''', message.text):
+    if not re.match(r'''^([78]?9\d{9})$''', message.text):
         raise UncorrectUserPhone
     user_data = await state.get_data()
     await update_users_phone(user_data['document'], message.text)
@@ -187,7 +187,7 @@ async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
 @handle_sms()
 async def cmd_instagram_handle(message: types.Message, state: FSMContext):
 
-    if not re.match(r'''^@[a-zA-Z0-9-_.]{5,16}''', message.text):
+    if not re.match(r'''^@?[a-zA-Z0-9-_.]{5,16}''', message.text):
         raise UncorrectUserInstagram
     valid_insta_account = await is_valid_insta_account(message.text)
     if not valid_insta_account:

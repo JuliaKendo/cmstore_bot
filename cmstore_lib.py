@@ -78,11 +78,15 @@ async def request_data(url, header, params):
 
 async def is_valid_insta_account(insta_name):
     with suppress(ValueError, requests.exceptions.ReadTimeout, AssertionError):
-        _, nickname = re.split(r'^@', insta_name)
+        parts_of_insta_name = re.split(r'^@', insta_name)
+        nickname = parts_of_insta_name[-1]
         response = requests.get(
             f'https://www.instagram.com/{nickname}/', verify=False, timeout=10
         )
-        assert re.findall(r'''(%s)''' % insta_name, response.text)
+        assert re.findall(
+            r'''(%s%s)''' % ('@' if len(parts_of_insta_name) == 1 else '', insta_name),
+            response.text
+        )
         return True
 
 
