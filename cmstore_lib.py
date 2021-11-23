@@ -1,11 +1,13 @@
 import asks
 import re
 import yaml
+import config
 import aiofiles
 import requests
 
 from contextlib import suppress
 from urllib.parse import unquote_plus
+from pathlib import Path
 
 from custom_exceptions import (
     RequestError,
@@ -40,27 +42,27 @@ async def update_config(**params):
     settings = {}
 
     with suppress(FileNotFoundError, yaml.YAMLError, TypeError):
-        async with aiofiles.open('config.yaml', mode='r') as f:
+        async with aiofiles.open(Path(config.PROJECT_ROOT, 'config.yaml'), mode='r') as f:
             content = await f.read()
             if not content:
                 raise yaml.YAMLError
             settings = yaml.safe_load(content)
 
     settings.update(params)
-    async with aiofiles.open('config.yaml', mode='w') as f:
+    async with aiofiles.open(Path(config.PROJECT_ROOT, 'config.yaml'), mode='w') as f:
         await f.write(str(settings))
 
 
 async def read_config(param=''):
     with suppress(FileNotFoundError, yaml.YAMLError, TypeError):
-        async with aiofiles.open('config.yaml', mode='r') as f:
+        async with aiofiles.open(Path(config.PROJECT_ROOT, 'config.yaml'), mode='r') as f:
             content = await f.read()
             if not content:
                 raise yaml.YAMLError
         settings = yaml.safe_load(content)
-        if not param:
-            return settings
-        return settings.get(param, None)
+        if param:
+            return settings.get(param, None)
+        return settings
 
 
 async def request_data(url, header, params):

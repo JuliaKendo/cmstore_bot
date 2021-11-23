@@ -39,7 +39,6 @@ from sms_api import handle_sms
 from notify_rollbar import notify_rollbar
 from error_handler import errors_handler
 
-
 env = Env()
 env.read_env()
 
@@ -95,11 +94,20 @@ async def cmd_start(message: types.Message, state: FSMContext):
         startup_photo = await read_file(path_image)
         await message.answer_photo(photo=startup_photo, reply_markup=types.ReplyKeyboardRemove())
     startup_text = await read_config('introduction_text')
+    prepared_text = eval('"' + startup_text.replace('"', '') + '"')
+    # Иногда в зависимости от операционной системы встречается двойное экранирование 
+    # управляющих последовательностей "\\\\r\\\\n\\\\t", данный код гарантирует удаление 
+    # всех экранируемых символов
+    for _ in range(0, 3):
+        with suppress(SyntaxError):
+            prepared_text = eval('"' + prepared_text.replace('"', '') + '"')
+            continue
+        break
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     buttons = ['Введите номер чека']
     keyboard.add(*buttons)
     await message.answer(
-        eval('"' + startup_text.replace('"', '') + '"'),
+        prepared_text,
         parse_mode=types.ParseMode.HTML,
         reply_markup=keyboard
     )
