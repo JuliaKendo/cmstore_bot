@@ -6,7 +6,7 @@ import rollbar
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Text
+from aiogram.dispatcher.filters import Text, Filter
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from aiogram.utils.executor import start_polling, start_webhook
@@ -50,6 +50,18 @@ class ConversationSteps(StatesGroup):
     waiting_for_user_name = State()
     waiting_for_phone_number = State()
     waiting_for_insta = State()
+
+
+class UncorrectUserInput(Filter):
+
+    def __init__(self, text) -> None:
+        self.text = text
+        super().__init__()
+
+    async def check(self, message: types.Message):
+        state = Dispatcher.get_current().current_state()
+        current_state = await state.get_state()
+        return not (message.text == self.text or current_state)
 
 
 def handle_mistakes():
@@ -121,6 +133,38 @@ async def cmd_cancel(message: types.Message, state: FSMContext):
     )
 
 
+async def cmd_refuse(message: types.Message, state: FSMContext):
+    keyboard = types.InlineKeyboardMarkup()
+    buttons = [
+        types.InlineKeyboardButton(text="Да", callback_data="finish"),
+        types.InlineKeyboardButton(text="Нет", callback_data="continue")
+    ]
+    keyboard.add(*buttons)
+    await message.answer("Вы действительно хотите отказаться от участия в розыгрыше?", reply_markup=keyboard)
+
+
+async def cmd_uncorrect_user_input(message: types.Message):
+
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    buttons = ['Введите номер чека']
+    keyboard.add(*buttons)
+    await message.answer(
+        'Для участия в розыгрыше нажмите кнопку "Введите номер чека"',
+        reply_markup=keyboard
+    )
+
+
+async def show_answer(message, text):
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    buttons = ['Отказаться от участия']
+    keyboard.add(*buttons)
+    await message.answer(
+        text,
+        parse_mode=types.ParseMode.MARKDOWN,
+        reply_markup=keyboard
+    )
+
+
 async def cmd_check_number_input(message: types.Message):
     await ConversationSteps.waiting_for_check_number.set()
 
@@ -132,15 +176,7 @@ async def cmd_check_numbers_handle(message: types.Message, state: FSMContext):
         raise UncorrectDocumentNumber
     document_ids = await get_document_identifiers_from_service(message.text)
     await state.update_data(document=document_ids)
-
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    buttons = ['Завершить']
-    keyboard.add(*buttons)
-    await message.answer(
-        'Введите свое Ф.И.О.:',
-        parse_mode=types.ParseMode.MARKDOWN,
-        reply_markup=keyboard
-    )
+    await show_answer(message, 'Введите свое Ф.И.О.:')
     await ConversationSteps.next()
 
 
@@ -153,14 +189,7 @@ async def cmd_user_name_handle(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     await update_users_full_name(user_data['document'], user_full_name)
     await state.update_data(user_name=user_full_name)
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    buttons = ['Завершить']
-    keyboard.add(*buttons)
-    await message.answer(
-        'Введите свой номер телефона:',
-        parse_mode=types.ParseMode.MARKDOWN,
-        reply_markup=keyboard
-    )
+    await show_answer(message, 'Введите свой номер телефона:')
     await ConversationSteps.next()
 
 
@@ -172,14 +201,7 @@ async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     await update_users_phone(user_data['document'], message.text)
     await state.update_data(phone_number=message.text)
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    buttons = ['Завершить']
-    keyboard.add(*buttons)
-    await message.answer(
-        'Введите название своего аккаунта Instagram:',
-        parse_mode=types.ParseMode.MARKDOWN,
-        reply_markup=keyboard
-    )
+    await show_answer(message, 'Введите название своего аккаунта Instagram:')
     await ConversationSteps.next()
 
 
@@ -209,11 +231,37 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
     return user_data, final_text
 
 
+async def send_finish(call: types.CallbackQuery):
+    state = Dispatcher.get_current().current_state()
+    await state.finish()
+    await call.message.answer(
+        'Участие в розыгрыше отменено. Благодарим за проявленный интерес.',
+        reply_markup=types.ReplyKeyboardRemove()
+    )
+    await call.answer(text="Спасибо, что воспользовались ботом!", show_alert=True)
+
+
+async def send_continue(call: types.CallbackQuery):
+    state = Dispatcher.get_current().current_state()
+    current_state = await state.get_state()
+    if current_state == 'ConversationSteps:waiting_for_user_name':
+        await show_answer(call.message, 'Введите свое Ф.И.О.:')
+    elif current_state == 'ConversationSteps:waiting_for_phone_number':
+        await show_answer(call.message, 'Введите свой номер телефона:')
+    elif current_state == 'ConversationSteps:waiting_for_insta':
+        await show_answer(call.message, 'Введите название своего аккаунта Instagram:')
+    else:
+        await call.message.answer('Продолжить')
+    await call.answer()
+
+
 def register_handlers_common(dp: Dispatcher):
     # Регистрация общих обработчиков
     dp.register_message_handler(cmd_start, commands=['start'], state='*')
     dp.register_message_handler(cmd_cancel, commands=['cancel', 'exit', 'stop', 'quit'], state='*')
-    dp.register_message_handler(cmd_cancel, Text(equals="завершить", ignore_case=True), state="*")
+    dp.register_message_handler(cmd_refuse, Text(equals="Отказаться от участия", ignore_case=True), state="*")
+    dp.register_message_handler(cmd_uncorrect_user_input, UncorrectUserInput('Введите номер чека'))
+
     # Шаг 1. Ввод и проверка номера чека
     dp.register_message_handler(cmd_check_number_input, text='Введите номер чека', state='*')
     dp.register_message_handler(
@@ -229,6 +277,10 @@ def register_handlers_common(dp: Dispatcher):
     )
     # Шаг 4. Обработка ввода аккаунта инстаграм
     dp.register_message_handler(cmd_instagram_handle, state=ConversationSteps.waiting_for_insta)
+
+    # Регистрация обработчиков коллбэков
+    dp.register_callback_query_handler(send_finish, text="finish", state='*')
+    dp.register_callback_query_handler(send_continue, text="continue", state='*')
 
 
 async def on_shutdown(dispatcher: Dispatcher):
