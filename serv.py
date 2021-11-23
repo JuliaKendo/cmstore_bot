@@ -37,15 +37,6 @@ async def update_config_params(name):
     return jsonify(True)
 
 
-@app.route('/webhook', methods=['POST'])
-@anotify_rollbar()
-async def webhook():
-    message = await request.get_data()
-    decode_message = message.decode('utf-8')
-    print(decode_message)
-    return jsonify({'status': 'success'}), 200
-
-
 if __name__ == '__main__':
     with suppress(KeyboardInterrupt):
         asyncio.run(app.run_task(host="0.0.0.0", port=5000))
