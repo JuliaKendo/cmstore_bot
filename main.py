@@ -107,8 +107,8 @@ async def cmd_start(message: types.Message, state: FSMContext):
         await message.answer_photo(photo=startup_photo, reply_markup=types.ReplyKeyboardRemove())
     startup_text = await read_config('introduction_text')
     prepared_text = eval('"' + startup_text.replace('"', '') + '"')
-    # Иногда в зависимости от операционной системы встречается двойное экранирование 
-    # управляющих последовательностей "\\\\r\\\\n\\\\t", данный код гарантирует удаление 
+    # Иногда в зависимости от операционной системы встречается двойное экранирование
+    # управляющих последовательностей "\\\\r\\\\n\\\\t", данный код гарантирует удаление
     # всех экранируемых символов
     for _ in range(0, 3):
         with suppress(SyntaxError):
@@ -174,7 +174,9 @@ async def cmd_check_numbers_handle(message: types.Message, state: FSMContext):
 
     if not re.match(r'''^(\d{5})$''', message.text):
         raise UncorrectDocumentNumber
-    document_ids = await get_document_identifiers_from_service(message.text)
+    document_ids = await get_document_identifiers_from_service(
+        message.bot.data['1c_url'], message.text
+    )
     await state.update_data(document=document_ids)
     await show_answer(message, 'Введите свое Ф.И.О.:')
     await ConversationSteps.next()
@@ -187,7 +189,9 @@ async def cmd_user_name_handle(message: types.Message, state: FSMContext):
         raise UncorrectUserFullName
     user_full_name = message.text.lower()
     user_data = await state.get_data()
-    await update_users_full_name(user_data['document'], user_full_name)
+    await update_users_full_name(
+        message.bot.data['1c_url'], user_data['document'], user_full_name
+    )
     await state.update_data(user_name=user_full_name)
     await show_answer(message, 'Введите свой номер телефона:')
     await ConversationSteps.next()
@@ -199,7 +203,9 @@ async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
     if not re.match(r'''^([78]?9\d{9})$''', message.text):
         raise UncorrectUserPhone
     user_data = await state.get_data()
-    await update_users_phone(user_data['document'], message.text)
+    await update_users_phone(
+        message.bot.data['1c_url'], user_data['document'], message.text
+    )
     await state.update_data(phone_number=message.text)
     await show_answer(message, 'Введите название своего аккаунта Instagram:')
     await ConversationSteps.next()
@@ -215,7 +221,9 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
     if not valid_insta_account:
         raise InvalidInstagramAccount
     user_data = await state.get_data()
-    participant_number = await update_users_instagram(user_data['document'], message.text)
+    participant_number = await update_users_instagram(
+        message.bot.data['1c_url'], user_data['document'], message.text
+    )
     await state.update_data(instagram=message.text)
     final_text = f'''
 Отлично, теперь Вы в игре😉

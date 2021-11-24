@@ -16,8 +16,6 @@ from custom_exceptions import (
     DocumentDoesNotMatch
 )
 
-service_url = 'https://cloud.sova.company/dev/cm/hs/sova_rozygrysh'
-
 
 async def decode_message(message, template):
     decoded_message = message.decode('unicode_escape')
@@ -90,10 +88,8 @@ async def is_valid_insta_account(insta_name):
         return True
 
 
-async def get_document_identifiers_from_service(document_number):
-    response = await asks.post(
-        service_url, json={"documentNumber": document_number}
-    )
+async def get_document_identifiers_from_service(url, document_number):
+    response = await asks.post(url, json={"documentNumber": document_number})
     response.raise_for_status()
 
     document_ids = response.json()
@@ -106,23 +102,23 @@ async def get_document_identifiers_from_service(document_number):
     return document_ids
 
 
-async def update_users_full_name(document_ids, user_full_name):
+async def update_users_full_name(url, document_ids, user_full_name):
     response = await asks.post(
-        service_url, json={**document_ids, **{"customerName": user_full_name}}
+        url, json={**document_ids, **{"customerName": user_full_name}}
     )
     response.raise_for_status()
 
 
-async def update_users_phone(document_ids, user_phone):
+async def update_users_phone(url, document_ids, user_phone):
     response = await asks.post(
-        service_url, json={**document_ids, **{"customerTelephone": user_phone}}
+        url, json={**document_ids, **{"customerTelephone": user_phone}}
     )
     response.raise_for_status()
 
 
-async def update_users_instagram(document_ids, user_instagram):
+async def update_users_instagram(url, document_ids, user_instagram):
     response = await asks.post(
-        service_url, json={**document_ids, **{"customerInstagram": user_instagram}}
+        url, json={**document_ids, **{"customerInstagram": user_instagram}}
     )
     response.raise_for_status()
 
