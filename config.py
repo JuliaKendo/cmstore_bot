@@ -10,4 +10,4 @@ def set_bot_variables(bot, env):
     bot.data['webapp_host'] = env.str('WEBAPP_HOST', '0.0.0.0')
     bot.data['webapp_port'] = env.int('WEBAPP_PORT', 5000)
     bot.data['sms_api_id'] = env.str('SMS_API_ID', '')
-    bot.data['1c_url'] = env.str('1C_URL', '')
+    bot.data['1c_url'] = env.str('URL_1C', '')
