@@ -1,11 +1,13 @@
-import asks
+import os
 import re
+import glob
+import asks
 import yaml
 import config
 import aiofiles
-import requests
 
 from contextlib import suppress
+from instabot import Bot
 from urllib.parse import unquote_plus
 from pathlib import Path
 
@@ -65,27 +67,44 @@ async def read_config(param=''):
 
 async def request_data(url, header, params):
     with suppress(asks.errors.BadStatus):
-        responce = await asks.get(url, headers=header, params=params)
-        responce.raise_for_status()
-        reply = responce.json()
+        response = await asks.get(url, headers=header, params=params)
+        response.raise_for_status()
+        reply = response.json()
         if not reply.get('error'):
             return reply
 
-    raise RequestError(responce.text)
+    raise RequestError(response.text)
 
 
-async def is_valid_insta_account(insta_name):
-    with suppress(ValueError, requests.exceptions.ReadTimeout, AssertionError):
+def init_insta_bot(login, password):
+    try:
+        insta_bot = Bot()
+        insta_bot.login(username=login, password=password)
+        return insta_bot
+    except KeyError:
+        cookie_del = glob.glob("config/*cookie.json")
+        if cookie_del:
+            os.remove(cookie_del[0])
+        return init_insta_bot(login, password)
+
+
+async def is_valid_insta_account(insta_name, insta_bot=None):
+    with suppress(ValueError, IndexError, asks.errors.BadStatus):
         parts_of_insta_name = re.split(r'^@', insta_name)
         nickname = parts_of_insta_name[-1]
-        response = requests.get(
-            f'https://www.instagram.com/{nickname}/', verify=False, timeout=10
-        )
-        assert re.findall(
-            r'''(%s%s)''' % ('@' if len(parts_of_insta_name) == 1 else '', insta_name),
-            response.text
-        )
-        return True
+        if insta_bot:
+            return insta_bot.get_user_id_from_username(nickname)
+        valid_insta_account = await is_valid_insta_account_without_login(nickname)
+        return valid_insta_account
+
+
+async def is_valid_insta_account_without_login(nickname):
+    response = await asks.get(
+        f'https://www.instagram.com/web/search/topsearch/?query={nickname}'
+    )
+    response.raise_for_status()
+    reply = response.json()
+    return [item for item in reply['users'] if item['user']['username'] == nickname]
 
 
 async def get_document_identifiers_from_service(url, document_number):

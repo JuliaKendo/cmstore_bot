@@ -36,7 +36,6 @@ async def request_sms(method, api_id='', payload={}, login='', password=''):
             'login': login,
             'password': password,
         }
-    print(payload)
     with suppress(asks.errors.BadStatus):
         responce = await asks.get(url, params={**params, **payload})
         responce.raise_for_status()

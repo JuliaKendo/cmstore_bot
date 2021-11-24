@@ -8,5 +8,5 @@ trio==0.18.0
 trio-asyncio==0.12.0
 more-itertools==8.10.0
 rollbar==0.16.2
-fake_useragent==0.1.11
+instabot==0.117.0
 PyYAML==6.0

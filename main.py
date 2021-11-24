@@ -18,6 +18,7 @@ from requests import HTTPError, ConnectionError
 from cmstore_lib import (
     read_file,
     read_config,
+    init_insta_bot,
     is_valid_insta_account,
     get_document_identifiers_from_service,
     update_users_full_name,
@@ -217,7 +218,9 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
 
     if not re.match(r'''^@?[a-zA-Z0-9-_.]{5,16}''', message.text):
         raise UncorrectUserInstagram
-    valid_insta_account = await is_valid_insta_account(message.text)
+    valid_insta_account = await is_valid_insta_account(
+        message.text, message.bot.data['insta_bot']
+    )
     if not valid_insta_account:
         raise InvalidInstagramAccount
     user_data = await state.get_data()
@@ -329,6 +332,13 @@ def main():
     bot = Bot(token=env.str('TG_BOT_TOKEN'))
 
     config.set_bot_variables(bot, env)
+
+    bot.data['insta_bot'] = None
+    with suppress(SystemExit):  # Логика такова, что при ошибки инстабота, выполняем запрос к инсте
+        bot.data['insta_bot'] = init_insta_bot(
+            env.str('INSTA_LOGIN'), env.str('INSTA_PASSWORD')
+        )
+
     dp = Dispatcher(bot, storage=storage)
 
     # Обработчики логики бота
