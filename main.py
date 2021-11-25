@@ -24,7 +24,6 @@ from cmstore_lib import (
     read_file,
     read_config,
     init_insta_bot,
-    is_valid_insta_account,
     get_document_identifiers_from_service,
     update_users_full_name,
     update_users_phone,
@@ -276,11 +275,6 @@ async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
 async def cmd_instagram_handle(message: types.Message, state: FSMContext):
     if not re.match(r'''^@?[a-zA-Z0-9-_.]{5,16}''', message.text):
         raise IncorrectUserInstagram
-    valid_insta_account = await is_valid_insta_account(
-        message.text.strip(), message.bot.data['insta_bot']
-    )
-    if not valid_insta_account:
-        raise InvalidInstagramAccount
     user_data = await state.get_data()
     participant_number = await update_users_instagram(
         message.bot.data['1c_url'], user_data['document'], message.text
@@ -351,6 +345,8 @@ async def on_shutdown(dispatcher: Dispatcher):
     bot = dispatcher.bot
     if bot.data['use_webhook']:
         await bot.delete_webhook()
+    if bot.data['insta_bot']:
+        bot.data['insta_bot'].logout()
     # Close Redis connection.
     await dispatcher.storage.close()
     await dispatcher.storage.wait_closed()
@@ -385,12 +381,11 @@ def main():
 
     config.set_bot_variables(bot, env)
 
-    bot.data['insta_bot'] = None
-    # Логика такова, что при ошибки инстабота будет выполняться альтернативный запрос к инсте.
-    with suppress(SystemExit, multiprocessing.context.TimeoutError):
-        bot.data['insta_bot'] = init_insta_bot(
-            env.str('INSTA_LOGIN'), env.str('INSTA_PASSWORD')
-        )
+    if env.str('INSTA_LOGIN'):
+        with suppress(SystemExit, multiprocessing.context.TimeoutError):
+            bot.data['insta_bot'] = init_insta_bot(
+                env.str('INSTA_LOGIN'), env.str('INSTA_PASSWORD')
+            )
 
     dp = Dispatcher(bot, storage=storage)
 

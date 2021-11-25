@@ -12,3 +12,4 @@ def set_bot_variables(bot, env):
     bot.data['sms_api_id'] = env.str('SMS_API_ID', '')
     bot.data['1c_url'] = env.str('URL_1C', '')
     bot.data['chat_ids_deleted_messages'] = env.str('CHAT_IDS_DELETED_MESSAGES', '')
+    bot.data['insta_bot'] = None

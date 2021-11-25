@@ -3,7 +3,6 @@ import re
 import glob
 import asks
 import yaml
-import time
 import config
 import aiofiles
 import functools
