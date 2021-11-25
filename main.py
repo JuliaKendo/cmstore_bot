@@ -44,6 +44,7 @@ from custom_exceptions import (
 from sms_api import handle_sms
 from notify_rollbar import notify_rollbar
 from error_handler import errors_handler
+from monitoring_lib import handle_monitoring_log
 
 env = Env()
 env.read_env()
@@ -128,6 +129,7 @@ async def delete_messages(chat_id):
 
 
 @handle_delete_messages()
+@handle_monitoring_log()
 async def show_answer(message, text):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     buttons = ['Отказаться от участия']
@@ -141,6 +143,7 @@ async def show_answer(message, text):
 
 
 @handle_delete_messages(True)
+@handle_monitoring_log()
 async def handle_finish(message, state, closing_text):
     await state.finish()
     msg = await message.answer(
@@ -159,6 +162,7 @@ async def set_commands(bot: Bot):
 
 
 @handle_delete_messages()
+@handle_monitoring_log()
 async def cmd_start(message: types.Message, state: FSMContext):
     await state.reset_state()
     with suppress(BadRequest):  # перехват ошибки здесь позволяет вывести текст без картинки.
@@ -194,6 +198,7 @@ async def cmd_cancel(message: types.Message, state: FSMContext):
 
 
 @handle_delete_messages()
+@handle_monitoring_log()
 async def cmd_confirm_finish(message: types.Message, state: FSMContext):
     keyboard = types.InlineKeyboardMarkup()
     buttons = [
@@ -208,6 +213,7 @@ async def cmd_confirm_finish(message: types.Message, state: FSMContext):
 
 
 @handle_delete_messages()
+@handle_monitoring_log()
 async def cmd_incorrect_user_input(message: types.Message):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     buttons = ['Введите номер чека']
@@ -220,6 +226,7 @@ async def cmd_incorrect_user_input(message: types.Message):
 
 
 @handle_delete_messages()
+@handle_monitoring_log()
 async def cmd_check_number_input(message: types.Message):
     await ConversationSteps.waiting_for_check_number.set()
     return message
