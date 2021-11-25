@@ -3,13 +3,16 @@ import re
 import glob
 import asks
 import yaml
+import time
 import config
 import aiofiles
+import functools
 
 from contextlib import suppress
 from instabot import Bot
 from urllib.parse import unquote_plus
 from pathlib import Path
+from multiprocessing.pool import ThreadPool as Pool
 
 from custom_exceptions import (
     RequestError,
@@ -17,6 +20,17 @@ from custom_exceptions import (
     NoActiveDrawFound,
     DocumentDoesNotMatch
 )
+
+
+def timeout(max_timeout):
+    def decorator(func):
+        @functools.wraps(func)
+        def inner(*args):
+            pool = Pool(processes=1)
+            async_result = pool.apply_async(func, args)
+            return async_result.get(max_timeout)
+        return inner
+    return decorator
 
 
 async def decode_message(message, template):
@@ -76,16 +90,16 @@ async def request_data(url, header, params):
     raise RequestError(response.text)
 
 
+@timeout(30)
 def init_insta_bot(login, password):
-    try:
-        insta_bot = Bot()
-        insta_bot.login(username=login, password=password)
-        return insta_bot
-    except KeyError:
-        cookie_del = glob.glob("config/*cookie.json")
-        if cookie_del:
-            os.remove(cookie_del[0])
-        return init_insta_bot(login, password)
+    print('init_insta_bot')
+    cookie_del = glob.glob("config/*cookie.json")
+    if cookie_del:
+        os.remove(cookie_del[0])
+
+    insta_bot = Bot()
+    insta_bot.login(username=login, password=password)
+    return insta_bot
 
 
 async def is_valid_insta_account(insta_name, insta_bot=None):

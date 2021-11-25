@@ -50,7 +50,7 @@ async def send_sms(api_id, phones, text_message):
 
     dispatch_report = await request_sms(
         "send", api_id,
-        {'to': ','.join(phones), 'msg': text_message, 'json': 1, 'test': 1}
+        {'to': ','.join(phones), 'msg': text_message, 'json': 1}
     )
     return [{
         'phone': phone,
