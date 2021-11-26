@@ -39,4 +39,4 @@ async def update_config_params(name):
 
 if __name__ == '__main__':
     with suppress(KeyboardInterrupt):
-        asyncio.run(app.run_task(host="0.0.0.0", port=5000))
+        asyncio.run(app.run_task(host=env.str('SERV_HOST'), port=env.str('SERV_PORT')))
