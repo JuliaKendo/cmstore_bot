@@ -1,0 +1,13 @@
+[Unit]
+Description=Cmstore бот
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/opt/cmstore_bot/
+ExecStart=/usr/bin/python3 /opt/cmstore_bot/main.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
