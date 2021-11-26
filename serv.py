@@ -11,7 +11,7 @@ from notify_rollbar import anotify_rollbar
 env = Env()
 env.read_env()
 
-app = Quart(__name__)
+app = Quart(__name__, static_folder=config.MEDIAFILES_DIRS)
 app.config.from_object(config)
 
 
