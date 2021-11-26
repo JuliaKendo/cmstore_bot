@@ -19,6 +19,7 @@ from contextlib import suppress
 from collections import defaultdict
 from environs import Env
 from requests import HTTPError, ConnectionError
+from pathlib import Path
 
 from cmstore_lib import (
     read_file,
@@ -129,7 +130,11 @@ async def delete_messages(chat_id):
 
 @handle_delete_messages()
 @handle_monitoring_log()
-async def show_answer(message, text):
+async def show_answer(message, text, image=None):
+    result = [message]
+    with suppress(BadRequest):  # перехват ошибки здесь позволяет вывести текст без картинки.
+        media_msg = await message.answer_photo(photo=image)
+        result.append(media_msg)
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     buttons = ['Отказаться от участия']
     keyboard.add(*buttons)
@@ -138,7 +143,8 @@ async def show_answer(message, text):
         parse_mode=types.ParseMode.MARKDOWN,
         reply_markup=keyboard
     )
-    return [msg, message]
+    result.append(msg)
+    return result[::-1]
 
 
 @handle_delete_messages(True)
@@ -163,11 +169,13 @@ async def set_commands(bot: Bot):
 @handle_delete_messages()
 @handle_monitoring_log()
 async def cmd_start(message: types.Message, state: FSMContext):
+    result = [message]
     await state.reset_state()
     with suppress(BadRequest):  # перехват ошибки здесь позволяет вывести текст без картинки.
         path_image = await read_config('startup_image')
         startup_photo = await read_file(path_image)
         media_msg = await message.answer_photo(photo=startup_photo, reply_markup=types.ReplyKeyboardRemove())
+        result.append(media_msg)
     startup_text = await read_config('introduction_text')
     prepared_text = eval('"' + startup_text.replace('"', '') + '"')
     # Иногда в зависимости от операционной системы встречается двойное экранирование
@@ -186,7 +194,8 @@ async def cmd_start(message: types.Message, state: FSMContext):
         parse_mode=types.ParseMode.HTML,
         reply_markup=keyboard
     )
-    return [msg, media_msg, message]
+    result.append(msg)
+    return result[::-1]
 
 
 async def cmd_cancel(message: types.Message, state: FSMContext):
@@ -266,7 +275,8 @@ async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
         message.bot.data['1c_url'], user_data['document'], message.text
     )
     await state.update_data(phone_number=message.text)
-    await show_answer(message, 'Введите название своего аккаунта Instagram:')
+    img = await read_file(Path(config.MEDIAFILES_DIRS, 'demo_insta.jpg'))
+    await show_answer(message, 'Введите название своего аккаунта Instagram:', img)
     await ConversationSteps.next()
 
 
@@ -306,7 +316,8 @@ async def send_continue(call: types.CallbackQuery):
     elif current_state == 'ConversationSteps:waiting_for_phone_number':
         await show_answer(call.message, 'Введите свой номер телефона (в формате "79180000025"):')
     elif current_state == 'ConversationSteps:waiting_for_insta':
-        await show_answer(call.message, 'Введите название своего аккаунта Instagram:')
+        img = await read_file(Path(config.MEDIAFILES_DIRS, 'demo_insta.jpg'))
+        await show_answer(call.message, 'Введите название своего аккаунта Instagram:', img)
     else:
         await call.message.answer('Продолжить')
     await call.answer()

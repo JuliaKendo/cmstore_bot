@@ -10,7 +10,6 @@ __pycache__
 postgres-data
 *.env
 static
-media
 test*.py
 *.session
 *.session-journal

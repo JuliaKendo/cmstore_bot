@@ -29,7 +29,7 @@ async def update_config_params(name):
         if decoded_text:
             await update_config(introduction_text=decoded_text)
     if name == 'startupImage' and message:
-        path_to_img = f'{config.STATICFILES_DIRS}/startupImage.png'
+        path_to_img = f'{config.MEDIAFILES_DIRS}/startupImage.png'
         with open(path_to_img, mode='wb') as f:
             f.write(message)
         await update_config(startup_image=path_to_img)
