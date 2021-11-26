@@ -14,7 +14,7 @@
     <div class="container">
       <div id="configArea">
         <div class="card mb-5">
-          <img src="{{ url_for('static', filename='CMStore_bot.png') }}" class="card-img-top img-responsive">
+          <img src="{{ url_for('media', filename='CMStore_bot.png') }}" class="card-img-top img-responsive">
           <div class="card-body">
             <form method="post" action="/updateConfig/" class="form-inline" @submit="onSubmit" id="form-send-configs">
               <div class="mb-3">
