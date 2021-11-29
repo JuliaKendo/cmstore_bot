@@ -153,6 +153,7 @@ async def handle_finish(message, state, closing_text):
     await state.finish()
     msg = await message.answer(
         closing_text,
+        parse_mode=types.ParseMode.MARKDOWN,
         reply_markup=types.ReplyKeyboardRemove()
     )
     return [msg, message]
@@ -187,11 +188,11 @@ async def cmd_start(message: types.Message, state: FSMContext):
             continue
         break
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    buttons = ['Введите номер чека']
+    buttons = ['Ввести номер чека']
     keyboard.add(*buttons)
     msg = await message.answer(
         prepared_text,
-        parse_mode=types.ParseMode.HTML,
+        parse_mode=types.ParseMode.MARKDOWN,
         reply_markup=keyboard
     )
     result.append(msg)
@@ -224,10 +225,10 @@ async def cmd_confirm_finish(message: types.Message, state: FSMContext):
 @handle_monitoring_log()
 async def cmd_incorrect_user_input(message: types.Message):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    buttons = ['Введите номер чека']
+    buttons = ['Ввести номер чека']
     keyboard.add(*buttons)
     msg = await message.answer(
-        'Для участия в розыгрыше нажмите кнопку "Введите номер чека"',
+        'Для участия в розыгрыше нажмите кнопку "Ввести номер чека"',
         reply_markup=keyboard
     )
     return [msg, message]
@@ -293,7 +294,9 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
     final_text = f'''
 Отлично, теперь Вы в игре😉
 Ваш номер участника {participant_number if participant_number else ""}
-Ждём 29 декабря в 15:00 на странице https://www.instagram.com/clinicmobile23/
+Ждём 29 декабря в 15:00 на странице [@clinicmobile23](https://www.instagram.com/clinicmobile23/).
+
+*Данное сообщение продублировано Вам в СМС.*
 '''
     await handle_finish(message, state, final_text)
     return user_data, final_text
@@ -328,10 +331,10 @@ def register_handlers_common(dp: Dispatcher):
     dp.register_message_handler(cmd_start, commands=['start'], state='*')
     dp.register_message_handler(cmd_cancel, commands=['cancel', 'exit', 'stop', 'quit'], state='*')
     dp.register_message_handler(cmd_confirm_finish, Text(equals="Отказаться от участия", ignore_case=True), state="*")
-    dp.register_message_handler(cmd_incorrect_user_input, IncorrectUserInput('Введите номер чека'))
+    dp.register_message_handler(cmd_incorrect_user_input, IncorrectUserInput('Ввести номер чека'))
 
     # Шаг 1. Ввод и проверка номера чека
-    dp.register_message_handler(cmd_check_number_input, text='Введите номер чека', state='*')
+    dp.register_message_handler(cmd_check_number_input, text='Ввести номер чека', state='*')
     dp.register_message_handler(
         cmd_check_numbers_handle, state=ConversationSteps.waiting_for_check_number
     )
