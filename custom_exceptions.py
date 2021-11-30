@@ -2,6 +2,7 @@
 SLUG_TO_EXCEPTION_TITLE = {
     'incorrect_document_number': 'Вы ввели не корректный номер, введите 5 числовых символов',
     'document_not_found': 'Вы ввели не верный номер чека',
+    'document_number_participated_in_draw': 'Данный чек уже участвует в розыгрыше',
     'no_active_draw_found': 'Не найден активный розыгрыш',
     'does_not_match': 'Сумма чека не соответствует правилам розыгрыша',
     'incorrect_user_full_name': 'Вы не верно ввели ФИО, введите в формате "Иванов Иван Иванович"',
@@ -46,6 +47,12 @@ class DocumentNotFound(NotValidUserData):
 
     def __str__(self):
         return SLUG_TO_EXCEPTION_TITLE.get('document_not_found', str(type(self)))
+
+
+class DocumentParticipatedInDraw(NotValidUserData):
+
+    def __str__(self):
+        return SLUG_TO_EXCEPTION_TITLE.get('document_number_participated_in_draw', str(type(self)))
 
 
 class NoActiveDrawFound(NotValidUserData):

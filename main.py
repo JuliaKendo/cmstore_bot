@@ -39,7 +39,8 @@ from custom_exceptions import (
     IncorrectUserPhone,
     IncorrectUserInstagram,
     InvalidInstagramAccount,
-    SmsApiError
+    SmsApiError,
+    DocumentParticipatedInDraw
 )
 from sms_api import handle_sms
 from notify_rollbar import notify_rollbar
@@ -86,7 +87,8 @@ def handle_mistakes():
                 IncorrectUserFullName,
                 IncorrectUserPhone,
                 IncorrectUserInstagram,
-                InvalidInstagramAccount
+                InvalidInstagramAccount,
+                DocumentParticipatedInDraw
             ) as description:
                 await args[0].answer(description)
             except SmsApiError as error:

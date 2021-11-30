@@ -17,7 +17,8 @@ from custom_exceptions import (
     RequestError,
     DocumentNotFound,
     NoActiveDrawFound,
-    DocumentDoesNotMatch
+    DocumentDoesNotMatch,
+    DocumentParticipatedInDraw
 )
 
 
@@ -131,6 +132,9 @@ async def get_document_identifiers_from_service(url, document_number):
         raise NoActiveDrawFound
     if document_ids['document'] == 'does not match':
         raise DocumentDoesNotMatch
+    if document_ids['document'] == 'participates':
+        raise DocumentParticipatedInDraw
+
     return document_ids
 
 
