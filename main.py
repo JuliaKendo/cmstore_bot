@@ -90,7 +90,7 @@ def handle_mistakes():
                 InvalidInstagramAccount,
                 DocumentParticipatedInDraw
             ) as description:
-                await args[0].answer(description)
+                await show_answer(args[0], description)
             except SmsApiError as error:
                 logger.error(f'Ошибки отправки sms: {error}')
                 rollbar.report_exc_info()
@@ -106,14 +106,14 @@ def handle_delete_messages(delete=False):
         @functools.wraps(func)
         async def inner(*args, **kwargs):
             message_seq = await func(*args, **kwargs)
-            chat_id = args[0].bot.data['chat_ids_deleted_messages']
+            chat_ids = args[0].bot.data['chat_ids_deleted_messages']
             if isinstance(message_seq, list):
                 for message in message_seq:
-                    if message['chat']['id'] != chat_id:
+                    if not str(message['chat']['id']) in chat_ids:
                         continue
                     messages_for_remove[message['chat']['id']].append(message)
             else:
-                if message_seq['chat']['id'] == chat_id:
+                if str(message_seq['chat']['id']) in chat_ids:
                     messages_for_remove[message_seq['chat']['id']].append(message_seq)
             if delete:
                 # Удаляем все сообщения при финишировании стейт машины.
@@ -124,7 +124,6 @@ def handle_delete_messages(delete=False):
 
 async def delete_messages(chat_id):
     for message in messages_for_remove[chat_id]:
-        await asyncio.sleep(5)
         with suppress(MessageCantBeDeleted, MessageToDeleteNotFound):
             await message.delete()
     messages_for_remove[chat_id] = []
@@ -190,7 +189,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
             continue
         break
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    buttons = ['Ввести номер чека']
+    buttons = ['Принять участие']
     keyboard.add(*buttons)
     msg = await message.answer(
         prepared_text,
@@ -227,20 +226,20 @@ async def cmd_confirm_finish(message: types.Message, state: FSMContext):
 @handle_monitoring_log()
 async def cmd_incorrect_user_input(message: types.Message):
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    buttons = ['Ввести номер чека']
+    buttons = ['Принять участие']
     keyboard.add(*buttons)
     msg = await message.answer(
-        'Для участия в розыгрыше нажмите кнопку "Ввести номер чека"',
+        'Для участия в розыгрыше нажмите кнопку "Принять участие"',
         reply_markup=keyboard
     )
     return [msg, message]
 
 
-@handle_delete_messages()
 @handle_monitoring_log()
 async def cmd_check_number_input(message: types.Message):
+    await show_answer(message, 'Введите номер чека:')
+    await message.delete()
     await ConversationSteps.waiting_for_check_number.set()
-    return message
 
 
 @handle_mistakes()
@@ -324,7 +323,7 @@ async def send_continue(call: types.CallbackQuery):
         img = await read_file(Path(config.MEDIAFILES_DIRS, 'demo_insta.jpg'))
         await show_answer(call.message, 'Введите название своего аккаунта Instagram:', img)
     else:
-        await call.message.answer('Продолжить')
+        await show_answer(call.message, 'Введите номер чека:')
     await call.answer()
 
 
@@ -333,10 +332,10 @@ def register_handlers_common(dp: Dispatcher):
     dp.register_message_handler(cmd_start, commands=['start'], state='*')
     dp.register_message_handler(cmd_cancel, commands=['cancel', 'exit', 'stop', 'quit'], state='*')
     dp.register_message_handler(cmd_confirm_finish, Text(equals="Отказаться от участия", ignore_case=True), state="*")
-    dp.register_message_handler(cmd_incorrect_user_input, IncorrectUserInput('Ввести номер чека'))
+    dp.register_message_handler(cmd_incorrect_user_input, IncorrectUserInput('Принять участие'))
 
     # Шаг 1. Ввод и проверка номера чека
-    dp.register_message_handler(cmd_check_number_input, text='Ввести номер чека', state='*')
+    dp.register_message_handler(cmd_check_number_input, text='Принять участие', state='*')
     dp.register_message_handler(
         cmd_check_numbers_handle, state=ConversationSteps.waiting_for_check_number
     )
