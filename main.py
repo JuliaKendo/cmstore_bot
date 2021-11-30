@@ -296,7 +296,7 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
     final_text = f'''
 Отлично, теперь Вы в игре😉
 Ваш номер участника {participant_number if participant_number else ""}
-Ждём 29 декабря в 15:00 на странице [@clinicmobile23](https://www.instagram.com/clinicmobile23/).
+Ждём 30 декабря в 17:00 на странице [@clinicmobile23](https://www.instagram.com/clinicmobile23/).
 
 *Данное сообщение продублировано Вам в СМС.*
 '''
