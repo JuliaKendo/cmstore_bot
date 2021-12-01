@@ -43,7 +43,7 @@ from custom_exceptions import (
     DocumentParticipatedInDraw
 )
 from sms_api import handle_sms
-from notify_rollbar import notify_rollbar
+from notify_rollbar import notify_rollbar, anotify_rollbar_from_context
 from error_handler import errors_handler
 from monitoring_lib import handle_monitoring_log
 
@@ -106,26 +106,25 @@ def handle_delete_messages(delete=False):
         @functools.wraps(func)
         async def inner(*args, **kwargs):
             message_seq = await func(*args, **kwargs)
-            chat_ids = args[0].bot.data['chat_ids_deleted_messages']
-            if isinstance(message_seq, list):
+            async with anotify_rollbar_from_context():
+                chat_ids = args[0].bot.data['chat_ids_deleted_messages']
                 for message in message_seq:
-                    if not str(message['chat']['id']) in chat_ids:
+                    chat_id = message['chat']['id']
+                    if not str(chat_id) in chat_ids:
                         continue
-                    messages_for_remove[message['chat']['id']].append(message)
-            else:
-                if str(message_seq['chat']['id']) in chat_ids:
-                    messages_for_remove[message_seq['chat']['id']].append(message_seq)
-            if delete:
-                # Удаляем все сообщения при финишировании стейт машины.
-                asyncio.create_task(delete_messages(message_seq[0]['chat']['id']))
+                    messages_for_remove[chat_id].append(message.message_id)
+
+                if delete:
+                    asyncio.create_task(delete_messages(args[0].bot, args[0].chat.id))
         return inner
     return decorator
 
 
-async def delete_messages(chat_id):
-    for message in messages_for_remove[chat_id]:
+async def delete_messages(bot, chat_id):
+    await asyncio.sleep(30)
+    for message_id in messages_for_remove[chat_id]:
         with suppress(MessageCantBeDeleted, MessageToDeleteNotFound):
-            await message.delete()
+            await bot.delete_message(chat_id, message_id)
     messages_for_remove[chat_id] = []
 
 
