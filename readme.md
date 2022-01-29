@@ -83,7 +83,7 @@ $ python main.py
 
 ## Запуск сервера и бота на prod:
 
-Скопировать `cmstore.service` и `cmstore_bot.service` в `/etc/systemd/system/`, затем:
+Скопировать `cmstore.service`, `cmstore_bot.service`, `certbot-renewal.service` и `certbot-renewal.timer` в `/etc/systemd/system/`, затем:
 ```bash
 systemctl start cmstore.service
 systemctl enable cmstore.service
@@ -92,8 +92,14 @@ systemctl enable cmstore.service
 systemctl start cmstore_bot.service
 systemctl enable cmstore_bot.service
 ```
+```bash
+systemctl start certbot-renewal.service
+systemctl enable certbot-renewal.service
+```
+
 Убедиться, что сервис работает:
 ```bash
 systemctl status cmstore.service
 systemctl status cmstore_bot.service
+systemctl status certbot-renewal.timer
 ```
