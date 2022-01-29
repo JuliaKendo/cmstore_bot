@@ -243,7 +243,7 @@ async def cmd_check_number_input(message: types.Message):
 
 @handle_mistakes()
 async def cmd_check_numbers_handle(message: types.Message, state: FSMContext):
-    if not re.match(r'''^(\d{5})$''', message.text):
+    if not re.match(r'''^(\d{4})$''', message.text):
         raise IncorrectDocumentNumber
     document_ids = await get_document_identifiers_from_service(
         message.bot.data['1c_url'], message.text
@@ -292,9 +292,10 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
     )
     await state.update_data(instagram=message.text)
     final_text = f'''
-Отлично, теперь Вы в игре😉
+Поздравляем, Вы зарегистрированы.
 Ваш номер участника {participant_number if participant_number else ""}
-Ждём 30 декабря в 17:00 на странице [@clinicmobile23](https://www.instagram.com/clinicmobile23/).
+Ждём на розыгрышах 14, 23 февраля и 8 марта на странице [@clinicmobile23](https://www.instagram.com/clinicmobile23/).
+Начало трансляций в 16:00.
 
 *Данное сообщение продублировано Вам в СМС.*
 '''

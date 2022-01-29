@@ -1,6 +1,6 @@
 
 SLUG_TO_EXCEPTION_TITLE = {
-    'incorrect_document_number': 'Вы ввели не корректный номер, введите 5 числовых символов',
+    'incorrect_document_number': 'Вы ввели не корректный номер, введите 4 числовых символов',
     'document_not_found': 'Вы ввели не верный номер чека',
     'document_number_participated_in_draw': 'Данный чек уже участвует в розыгрыше',
     'no_active_draw_found': 'Не найден активный розыгрыш',
