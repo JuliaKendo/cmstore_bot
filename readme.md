@@ -96,7 +96,10 @@ systemctl enable cmstore_bot.service
 systemctl start certbot-renewal.service
 systemctl enable certbot-renewal.service
 ```
-
+```bash
+systemctl start certbot-renewal.timer
+systemctl enable certbot-renewal.timer
+```
 Убедиться, что сервис работает:
 ```bash
 systemctl status cmstore.service
