@@ -39,6 +39,7 @@ from custom_exceptions import (
     IncorrectUserPhone,
     IncorrectUserInstagram,
     InvalidInstagramAccount,
+    AccountIsParticipat,
     SmsApiError,
     DocumentParticipatedInDraw
 )
@@ -56,9 +57,9 @@ messages_for_remove = defaultdict(list)
 
 class ConversationSteps(StatesGroup):
     waiting_for_check_number = State()
+    waiting_for_insta = State()
     waiting_for_user_name = State()
     waiting_for_phone_number = State()
-    waiting_for_insta = State()
 
 
 class IncorrectUserInput(Filter):
@@ -88,6 +89,7 @@ def handle_mistakes():
                 IncorrectUserPhone,
                 IncorrectUserInstagram,
                 InvalidInstagramAccount,
+                AccountIsParticipat,
                 DocumentParticipatedInDraw
             ) as description:
                 await show_answer(args[0], description)
@@ -249,7 +251,8 @@ async def cmd_check_numbers_handle(message: types.Message, state: FSMContext):
         message.bot.data['1c_url'], message.text
     )
     await state.update_data(document=document_ids)
-    await show_answer(message, 'Введите свое Ф.И.О. (в формате "Иванов Иван Иванович"):')
+    img = await read_file(Path(config.MEDIAFILES_DIRS, 'demo_insta.jpg'))
+    await show_answer(message, 'Введите название своего аккаунта Instagram:', img)
     await ConversationSteps.next()
 
 
@@ -268,29 +271,15 @@ async def cmd_user_name_handle(message: types.Message, state: FSMContext):
 
 
 @handle_mistakes()
+@handle_sms()
 async def cmd_phone_number_handle(message: types.Message, state: FSMContext):
     if not re.match(r'''^([78]?9\d{9})$''', message.text):
         raise IncorrectUserPhone
     user_data = await state.get_data()
-    await update_users_phone(
+    participant_number = await update_users_phone(
         message.bot.data['1c_url'], user_data['document'], message.text
     )
     await state.update_data(phone_number=message.text)
-    img = await read_file(Path(config.MEDIAFILES_DIRS, 'demo_insta.jpg'))
-    await show_answer(message, 'Введите название своего аккаунта Instagram:', img)
-    await ConversationSteps.next()
-
-
-@handle_mistakes()
-@handle_sms()
-async def cmd_instagram_handle(message: types.Message, state: FSMContext):
-    if not re.match(r'''^@?[a-zA-Z0-9-_.]{5,16}''', message.text):
-        raise IncorrectUserInstagram
-    user_data = await state.get_data()
-    participant_number = await update_users_instagram(
-        message.bot.data['1c_url'], user_data['document'], message.text
-    )
-    await state.update_data(instagram=message.text)
     final_text = f'''
 Поздравляем, Вы зарегистрированы.
 Ваш номер участника {participant_number if participant_number else ""}
@@ -301,6 +290,21 @@ async def cmd_instagram_handle(message: types.Message, state: FSMContext):
 '''
     await handle_finish(message, state, final_text)
     return user_data, final_text
+
+
+@handle_mistakes()
+async def cmd_instagram_handle(message: types.Message, state: FSMContext):
+    if not re.match(r'''^@?[a-zA-Z0-9-_.]{5,16}''', message.text):
+        raise IncorrectUserInstagram
+    user_data = await state.get_data()
+    accountUsedToday = await update_users_instagram(
+        message.bot.data['1c_url'], user_data['document'], message.text
+    )
+    if accountUsedToday:
+        raise AccountIsParticipat
+    await state.update_data(instagram=message.text)
+    await show_answer(message, 'Введите свое Ф.И.О. (в формате "Иванов Иван Иванович"):')
+    await ConversationSteps.next()
 
 
 async def send_finish(call: types.CallbackQuery):
@@ -315,13 +319,13 @@ async def send_finish(call: types.CallbackQuery):
 async def send_continue(call: types.CallbackQuery):
     state = Dispatcher.get_current().current_state()
     current_state = await state.get_state()
-    if current_state == 'ConversationSteps:waiting_for_user_name':
+    if current_state == 'ConversationSteps:waiting_for_insta':
+        img = await read_file(Path(config.MEDIAFILES_DIRS, 'demo_insta.jpg'))
+        await show_answer(call.message, 'Введите название своего аккаунта Instagram:', img)
+    elif current_state == 'ConversationSteps:waiting_for_user_name':
         await show_answer(call.message, 'Введите свое Ф.И.О. (в формате "Иванов Иван Иванович"):')
     elif current_state == 'ConversationSteps:waiting_for_phone_number':
         await show_answer(call.message, 'Введите свой номер телефона (в формате "79180000025"):')
-    elif current_state == 'ConversationSteps:waiting_for_insta':
-        img = await read_file(Path(config.MEDIAFILES_DIRS, 'demo_insta.jpg'))
-        await show_answer(call.message, 'Введите название своего аккаунта Instagram:', img)
     else:
         await show_answer(call.message, 'Введите номер чека:')
     await call.answer()
@@ -339,16 +343,18 @@ def register_handlers_common(dp: Dispatcher):
     dp.register_message_handler(
         cmd_check_numbers_handle, state=ConversationSteps.waiting_for_check_number
     )
-    # Шаг 2. Обработка ввода ФИО пользователя
+    # Шаг 2. Обработка ввода аккаунта инстаграм
+    dp.register_message_handler(
+        cmd_instagram_handle, state=ConversationSteps.waiting_for_insta
+    )
+    # Шаг 3. Обработка ввода ФИО пользователя
     dp.register_message_handler(
         cmd_user_name_handle, state=ConversationSteps.waiting_for_user_name
     )
-    # Шаг 3. Обработка ввода номера телефона пользователя
+    # Шаг 4. Обработка ввода номера телефона пользователя
     dp.register_message_handler(
         cmd_phone_number_handle, state=ConversationSteps.waiting_for_phone_number
     )
-    # Шаг 4. Обработка ввода аккаунта инстаграм
-    dp.register_message_handler(cmd_instagram_handle, state=ConversationSteps.waiting_for_insta)
 
     # Регистрация обработчиков коллбэков
     dp.register_callback_query_handler(send_finish, text="finish", state='*')

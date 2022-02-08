@@ -9,6 +9,7 @@ SLUG_TO_EXCEPTION_TITLE = {
     'incorrect_user_phone': 'Вы не верно ввели номер телефона, введите в формате "79180000025"',
     'incorrect_user_instagram': 'Вы не корректно ввели аккаунт инстаграмма, введите в формате "@...."',
     'invalid_instagram_account': 'Вы ввели недействительный аккаунт инстаграмма.',
+    'account_is_participat': 'Данный аккаунт уже зарегистрирован, введите другой.',
     'unknown_error': 'Неизвестная ошибка'
 }
 
@@ -89,3 +90,9 @@ class InvalidInstagramAccount(NotValidUserData):
 
     def __str__(self):
         return SLUG_TO_EXCEPTION_TITLE.get('invalid_instagram_account', str(type(self)))
+
+
+class AccountIsParticipat(NotValidUserData):
+
+    def __str__(self):
+        return SLUG_TO_EXCEPTION_TITLE.get('account_is_participat', str(type(self)))
