@@ -146,10 +146,13 @@ async def update_users_full_name(url, document_ids, user_full_name):
 
 
 async def update_users_phone(url, document_ids, user_phone):
+
     response = await asks.post(
         url, json={**document_ids, **{"customerTelephone": user_phone}}
     )
     response.raise_for_status()
+
+    return response.json().get('number')
 
 
 async def update_users_instagram(url, document_ids, user_instagram):
