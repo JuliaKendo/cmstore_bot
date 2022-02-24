@@ -13,12 +13,14 @@ from urllib.parse import unquote_plus
 from pathlib import Path
 from multiprocessing.pool import ThreadPool as Pool
 
+from requests import HTTPError, ConnectionError
 from custom_exceptions import (
     RequestError,
     DocumentNotFound,
     NoActiveDrawFound,
     DocumentDoesNotMatch,
-    DocumentParticipatedInDraw
+    DocumentParticipatedInDraw,
+    UnableGetCharacters
 )
 
 
@@ -162,3 +164,14 @@ async def update_users_instagram(url, document_ids, user_instagram):
     response.raise_for_status()
 
     return response.json().get('accountUsedToday')
+
+
+async def get_max_number_length(url):
+    with suppress(HTTPError, ConnectionError, ValueError):
+        response = await asks.post(url, json={"currentCheck": 1})
+        response.raise_for_status()
+
+        max_number_length = response.json()
+        if max_number_length:
+            return max_number_length.get('characters')
+    raise UnableGetCharacters

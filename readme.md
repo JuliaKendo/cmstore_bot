@@ -60,6 +60,7 @@ $ . env/bin/activate
 
 `ROLLBAR_TOKEN` - Токен для Rollbar сервиса.
 
+`DEFAULT_MAX_NUMBER_LENGTH` - максимальная длина номера чека
 
 # Процедура запуска
 

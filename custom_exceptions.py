@@ -1,6 +1,6 @@
 
 SLUG_TO_EXCEPTION_TITLE = {
-    'incorrect_document_number': 'Вы ввели не корректный номер, введите 4 числовых символов',
+    'incorrect_document_number': 'Вы ввели не корректный номер, введите %s числовых символов',
     'document_not_found': 'Вы ввели не верный номер чека',
     'document_number_participated_in_draw': 'Данный чек уже участвует в розыгрыше',
     'no_active_draw_found': 'Не найден активный розыгрыш',
@@ -10,6 +10,7 @@ SLUG_TO_EXCEPTION_TITLE = {
     'incorrect_user_instagram': 'Вы не корректно ввели аккаунт инстаграмма, введите в формате "@...."',
     'invalid_instagram_account': 'Вы ввели недействительный аккаунт инстаграмма.',
     'account_is_participat': 'Данный аккаунт уже зарегистрирован, введите другой.',
+    'unable_get_characters': 'Невозможно получить максимальную длину номера чека.',
     'unknown_error': 'Неизвестная ошибка'
 }
 
@@ -40,8 +41,11 @@ class NotValidUserData(Exception):
 
 class IncorrectDocumentNumber(NotValidUserData):
 
+    def __init__(self, max_number_length):
+        self.max_number_length = max_number_length
+
     def __str__(self):
-        return SLUG_TO_EXCEPTION_TITLE.get('incorrect_document_number', str(type(self)))
+        return SLUG_TO_EXCEPTION_TITLE.get('incorrect_document_number', str(type(self))) % str(self.max_number_length)
 
 
 class DocumentNotFound(NotValidUserData):
@@ -96,3 +100,9 @@ class AccountIsParticipat(NotValidUserData):
 
     def __str__(self):
         return SLUG_TO_EXCEPTION_TITLE.get('account_is_participat', str(type(self)))
+
+
+class UnableGetCharacters(NotValidUserData):
+
+    def __str__(self):
+        return SLUG_TO_EXCEPTION_TITLE.get('unable_get_characters', str(type(self)))

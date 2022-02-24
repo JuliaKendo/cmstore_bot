@@ -28,7 +28,8 @@ from cmstore_lib import (
     get_document_identifiers_from_service,
     update_users_full_name,
     update_users_phone,
-    update_users_instagram
+    update_users_instagram,
+    get_max_number_length
 )
 from custom_exceptions import (
     DocumentNotFound,
@@ -41,7 +42,8 @@ from custom_exceptions import (
     InvalidInstagramAccount,
     AccountIsParticipat,
     SmsApiError,
-    DocumentParticipatedInDraw
+    DocumentParticipatedInDraw,
+    UnableGetCharacters
 )
 from sms_api import handle_sms
 from notify_rollbar import notify_rollbar, anotify_rollbar_from_context
@@ -245,8 +247,13 @@ async def cmd_check_number_input(message: types.Message):
 
 @handle_mistakes()
 async def cmd_check_numbers_handle(message: types.Message, state: FSMContext):
-    if not re.match(r'''^(\d{4})$''', message.text):
-        raise IncorrectDocumentNumber
+    try:
+        max_number_length = await get_max_number_length(message.bot.data['1c_url'])
+    except UnableGetCharacters:
+        max_number_length = message.bot.data['default_max_number_length']
+
+    if not re.match(r'''^(\d{%s})$''' % str(max_number_length), message.text):
+        raise IncorrectDocumentNumber(max_number_length)
     document_ids = await get_document_identifiers_from_service(
         message.bot.data['1c_url'], message.text
     )

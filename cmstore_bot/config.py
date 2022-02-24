@@ -13,3 +13,4 @@ def set_bot_variables(bot, env):
     bot.data['1c_url'] = env.str('URL_1C', '')
     bot.data['chat_ids_deleted_messages'] = env.list('CHAT_IDS_DELETED_MESSAGES', '')
     bot.data['insta_bot'] = None
+    bot.data['default_max_number_length'] = env.int('DEFAULT_MAX_NUMBER_LENGTH', '')
